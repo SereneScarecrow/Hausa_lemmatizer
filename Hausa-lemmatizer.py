@@ -12,7 +12,6 @@ class HausaLemmatizer:
 
         # Загружаем словари
         self.plural_dict = self._load_dictionary("plural_nouns.json")
-        # self.verb_dict = self._load_dictionary(verb_dict_path)
 
     
     def _load_dictionary(self, dict_path):
@@ -64,25 +63,25 @@ class HausaLemmatizer:
         
         return word_lower
     
-    def _apply_noun_rules(self, word):
-        """Применяет правила для образования единственного числа"""
-        for suffix in self.plural_suffixes:
-            if word.endswith(suffix):
-                stem = word[:-len(suffix)]
-                if stem:
-                    return stem
-        return word
+    # def _apply_noun_rules(self, word):
+    #     """Применяет правила для образования единственного числа"""
+    #     for suffix in self.plural_suffixes:
+    #         if word.endswith(suffix):
+    #             stem = word[:-len(suffix)]
+    #             if stem:
+    #                 return stem
+    #     return word
     
     def _process_verb(self, word, pos_tag):
-        """Обработка глаголов: словарь -> правила -> как есть"""
+        """Обработка глаголов: словарь -> правила"""
         word_lower = word.lower()
         
         # if self.verb_dict and word_lower in self.verb_dict:
         #     return self.verb_dict[word_lower]
         
-        # stem_by_rules = self._apply_verb_rules(word_lower)
-        # if stem_by_rules != word_lower:
-        #     return stem_by_rules
+        stem_by_rules = self._apply_verb_rules(word_lower)
+        if stem_by_rules != word_lower:
+            return stem_by_rules
         
         return word_lower
     
