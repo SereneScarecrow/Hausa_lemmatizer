@@ -43,4 +43,3 @@ formatted = lemmatizer.get_lemma_sentence(text, "underscore")
 ## Dependencies
 
 - transformers
-- torch
