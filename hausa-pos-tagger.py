@@ -147,5 +147,5 @@ class HausaPOSTagger:
         if len(data['original_text']) == len(data['combined_pos_format']):
             return pd.DataFrame(data)
 
-        print("DataFrame wasn't created because only part of the text was analyzed")
+        print("DataFrame wasn't created because only part of the text was analyzed.")
         return data
