@@ -1,24 +1,27 @@
 from transformers import AutoTokenizer, AutoModelForTokenClassification, TokenClassificationPipeline
-import string
 import pandas as pd
+import string
+
 
 class HausaPOSTagger:
     def __init__(self, model_name="masakhane/hausa-pos-tagger-afroxlmr"):
+        """Initialize the Hausa POS tagger with the specified model."""
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForTokenClassification.from_pretrained(model_name)
         self.pos_pipeline = TokenClassificationPipeline(
             model=self.model,
-            tokenizer=self.tokenizer)
+            tokenizer=self.tokenizer
+        )
 
-    def get_pos_text(lemmatizer, text: str) -> str:
+    def get_pos_text(self, text: str) -> list[dict]:
         """
-        Возвращает список словарей со словами и частями речи.
+        Returns a list of dictionaries with words and their part-of-speech tags.
         """
-        # Получаем POS-теги для каждого токена
-        tagged_tokens = lemmatizer.pos_pipeline(text)
+        # Get POS tags for each token
+        tagged_tokens = self.pos_pipeline(text)
         tokens = []
 
-        # Извлекаем очищенные токены
+        # Extract cleaned tokens
         for token in tagged_tokens:
             word = token['word'].replace('▁', ' ').strip()
             if word:
@@ -29,58 +32,66 @@ class HausaPOSTagger:
 
         return tokens
 
-
-    def get_combined_pos_text(lemmatizer, text: str) -> str:
+    def _merge_consecutive_parts(self, word_parts: list[str], pos_tags: list[str]) -> tuple[list[str], list[str]]:
         """
-        Объединяет разделенные токены и возвращает в формате 'слово_POS' или 'часть1+часть2_POS1+POS2'.
-        Объединяет подряд идущие одинаковые POS-теги и соответствующие части слов.
+        Merge consecutive word parts with identical POS tags.
+        
+        Args:
+            word_parts: List of word fragments
+            pos_tags: List of corresponding POS tags
+            
+        Returns:
+            Tuple of (merged_words, merged_pos)
         """
-        def merge_consecutive_parts(word_parts, pos_tags):
-            """Объединяет подряд идущие части слов с одинаковыми POS-тегами"""
-            if not word_parts:
-                return [], []
+        if not word_parts:
+            return [], []
 
-            merged_words = []
-            merged_pos = []
-            current_word = word_parts[0]
-            current_pos = pos_tags[0]
+        merged_words = []
+        merged_pos = []
+        current_word = word_parts[0]
+        current_pos = pos_tags[0]
 
-            for i in range(1, len(word_parts)):
-                if pos_tags[i] == current_pos:
-                    # Объединяем части слов с одинаковыми POS
-                    current_word += word_parts[i]
-                else:
-                    # Сохраняем предыдущую часть и начинаем новую
-                    merged_words.append(current_word)
-                    merged_pos.append(current_pos)
-                    current_word = word_parts[i]
-                    current_pos = pos_tags[i]
+        for i in range(1, len(word_parts)):
+            if pos_tags[i] == current_pos:
+                # Combine word parts with identical POS
+                current_word += word_parts[i]
+            else:
+                # Save previous part and start new one
+                merged_words.append(current_word)
+                merged_pos.append(current_pos)
+                current_word = word_parts[i]
+                current_pos = pos_tags[i]
 
-            # Добавляем последнюю часть
-            merged_words.append(current_word)
-            merged_pos.append(current_pos)
+        # Add final part
+        merged_words.append(current_word)
+        merged_pos.append(current_pos)
 
-            return merged_words, merged_pos
+        return merged_words, merged_pos
 
-        # Получаем базовые токены
-        tokens = HausaPOSTagger.get_pos_text(lemmatizer, text)
+    def get_combined_pos_text(self, text: str) -> list[str]:
+        """
+        Combines split tokens and returns in 'word_POS' or 'part1+part2_POS1+POS2' format.
+        Merges consecutive parts with identical POS tags.
+        """
+        # Get base tokens
+        tokens = self.get_pos_text(text)
 
-        # Слова из текста
+        # Words from original text
         text_words = text.split()
         result = []
-        i = 0  # индекс в tokens
-        j = 0  # индекс в text_words
+        i = 0  # index in tokens
+        j = 0  # index in text_words
 
         while i < len(tokens):
             if j < len(text_words):
-                # Текущее слово из текста
+                # Current word from text
                 target_word = text_words[j]
                 combined = tokens[i]['word']
                 word_parts = [tokens[i]['word']]
                 pos_tags = [tokens[i]['pos']]
                 k = i
 
-                # Пытаемся объединить следующие токены
+                # Try to combine following tokens
                 while combined != target_word and k + 1 < len(tokens):
                     next_token = tokens[k + 1]
                     test_combined = combined + next_token['word']
@@ -93,50 +104,48 @@ class HausaPOSTagger:
                     else:
                         break
 
-                # Если собрали полное слово
+                # If we assembled the complete word
                 if combined == target_word:
-                    # Объединяем подряд идущие одинаковые части
-                    merged_words, merged_pos = merge_consecutive_parts(word_parts, pos_tags)
+                    # Merge consecutive identical parts
+                    merged_words, merged_pos = self._merge_consecutive_parts(word_parts, pos_tags)
 
-                    # Формируем результат
+                    # Format the result
                     word_with_plus = "+".join(merged_words)
                     pos_with_plus = "+".join(merged_pos)
                     result.append(f"{word_with_plus}_{pos_with_plus}")
                     i = k + 1
                     j += 1
                 else:
-                    # Не удалось объединить
+                    # Failed to combine
                     result.append(f"{tokens[i]['word']}_{tokens[i]['pos']}")
                     i += 1
             else:
-                # Остались лишние токены
+                # Remaining tokens
                 result.append(f"{tokens[i]['word']}_{tokens[i]['pos']}")
                 i += 1
 
-        return result, " ".join(result)
+        return result
 
-    def create_comparison_dataframe(self, lemmatizer, text: str) -> pd.DataFrame:
+    def create_comparison_dataframe(self, text: str) -> pd.DataFrame:
         """
-        Создает DataFrame
+        Creates a DataFrame for comparing tokenization and POS tagging approaches.
         """
-        translator = str.maketrans('', '', string.punctuation)
+        # Remove punctuation
+        translator = str.maketrans('', '', string.punctuation + '“”')
         text_without_punctuation = text.translate(translator)
 
-        # 1. Получаем раздельную разметку
-        separate_result = lemmatizer.get_pos_text(text_without_punctuation)
+        # Get combined POS tagging
+        result = self.get_combined_pos_text(text_without_punctuation)
+        combined_pos_result = " ".join(result)
 
-        # 2. Получаем объединенную разметку
-        result, combined_pos_result = lemmatizer.get_combined_pos_text(text_without_punctuation)
-        combined_lemma_result = [self.process_word_by_pos(*i.split('_')) for i in result]
-
-        # 3. Подготавливаем данные для DataFrame
+        # Prepare data for DataFrame
         data = {
             'original_text': text_without_punctuation.split(),
-            # 'separate_format': separate_result.split(),
-            'combined_pos_format': combined_pos_result.split(),
-            'combined_lemma_format': combined_pos_result.split(),
+            'combined_pos_format': combined_pos_result.split()
         }
 
-        df = pd.DataFrame(data)
+        if len(data['original_text']) == len(data['combined_pos_format']):
+            return pd.DataFrame(data)
 
-        return df
+        print("DataFrame wasn't created because only part of the text was analyzed")
+        return data
