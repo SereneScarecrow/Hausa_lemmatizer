@@ -1,5 +1,5 @@
 # Hausa NLP Toolkit
-A simple Python toolkit for Hausa language text processing with POS tagging and lemmatization.
+A simple Python toolkit for Hausa language text processing with POS tagging and lemmatization. This toolkit was created to prepare Hausa texts for the process of creating embeddings.
 
 ## What's Inside
 Two main classes for Hausa text processing:
