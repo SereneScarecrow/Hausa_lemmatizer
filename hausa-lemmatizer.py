@@ -12,12 +12,11 @@ class HausaLemmatizer:
             plural_dict_path: Path to plural nouns dictionary (JSON)
             verb_dict_path: Path to verbs dictionary (JSON) - currently not implemented
         """
-        # Load dictionaries
+        # Load dictionary
         self.plural_dict = self._load_dictionary(plural_dict_path)
-        # self.verb_dict = self._load_dictionary(verb_dict_path)  # Currently commented out
         
         # Define plural suffixes for rule-based processing
-        self.plural_suffixes = ['-', '']  # Add actual suffixes here
+        # self.plural_suffixes = ['-', '']
 
     def _load_dictionary(self, dict_path: Optional[str]) -> Dict[str, str]:
         """
@@ -105,17 +104,19 @@ class HausaLemmatizer:
         handler = pos_handlers.get(pos_tag, self._process_other)
         return handler(word, pos_tag)
 
+    # Instead of the word the following functions return word tag
+    # This is lemmatization requirement for specific task
     def _process_pronoun(self, word: str, pos_tag: str) -> str:
         """Process pronouns."""
-        return "pron1"  # Placeholder - implement actual logic
+        return "pron1"
 
     def _process_propn(self, word: str, pos_tag: str) -> str:
         """Process proper nouns."""
-        return "propn1"  # Placeholder - implement actual logic
+        return "propn1"
 
     def _process_numeral(self, word: str, pos_tag: str) -> str:
         """Process numerals."""
-        return "num1"  # Placeholder - implement actual logic
+        return "num1"
 
     def _process_noun(self, word: str, pos_tag: str) -> str:
         """
